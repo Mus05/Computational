@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CT Quest: Bina Robot Pintar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3B82F6; /* Blue */
+            --secondary: #10B981; /* Emerald */
+            --accent: #F59E0B; /* Amber */
+            --bg-color: #F8FAFC; /* Slate 50 */
+            --text-dark: #0F172A;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            font-family: 'Nunito', sans-serif;
+            overflow-x: hidden;
+            background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        h1, h2, h3, .game-font { font-family: 'Fredoka One', cursive; letter-spacing: 1px; }
+
+        .game-card {
+            background: white;
+            border: 4px solid #94A3B8;
+            border-radius: 24px;
+            box-shadow: 0 8px 0 #94A3B8;
+            transition: all 0.2s ease;
+        }
+        
+        .game-btn {
+            background: var(--primary);
+            color: white;
+            border: 4px solid #1D4ED8;
+            border-radius: 16px;
+            box-shadow: 0 6px 0 #1D4ED8;
+            text-transform: uppercase;
+            font-weight: 900;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        
+        .game-btn:hover:not(:disabled) { transform: translateY(2px); box-shadow: 0 4px 0 #1D4ED8; }
+        .game-btn:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #1D4ED8; }
+        .game-btn:disabled { background: #94A3B8; border-color: #64748B; box-shadow: 0 6px 0 #64748B; cursor: not-allowed; opacity: 0.7; }
+        
+        .game-btn.btn-green { background: var(--secondary); border-color: #047857; box-shadow: 0 6px 0 #047857; }
+        .game-btn.btn-green:hover:not(:disabled) { box-shadow: 0 4px 0 #047857; }
+        .game-btn.btn-green:active:not(:disabled) { box-shadow: 0 0 0 #047857; }
+
+        .screen { display: none; opacity: 0; transition: opacity 0.3s; }
+        .screen.active { display: flex; opacity: 1; }
+
+        .draggable-item { cursor: pointer; user-select: none; transition: transform 0.2s; }
+        .draggable-item:hover { transform: scale(1.05); }
+        
+        .drop-zone { min-height: 120px; border: 4px dashed #CBD5E1; border-radius: 16px; transition: background 0.3s; }
+        .drop-zone.active { background-color: #E0E7FF; border-color: var(--primary); }
+
+        #toast { position: fixed; bottom: 20px; right: 20px; background: white; border: 4px solid var(--text-dark); border-radius: 16px; padding: 16px; box-shadow: 0 6px 0 var(--text-dark); transform: translateX(150%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; }
+        #toast.show { transform: translateX(0); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-200">
+
+    <div id="toast" class="game-font text-lg flex items-center gap-3">
+        <span id="toast-icon">✨</span>
+        <span id="toast-msg">Mesej</span>
+    </div>
+
+    <nav class="w-full p-4 flex justify-between items-center bg-white border-b-4 border-slate-300 z-10 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-xl shadow-[0_4px_0_0_#1D4ED8] pb-1">🤖</div>
+            <span class="game-font text-xl text-slate-800 hidden sm:inline">CT QUEST: BINA ROBOT PINTAR</span>
+            <span class="game-font text-xl text-slate-800 sm:hidden">CT QUEST</span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <div id="nav-score" class="hidden font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl border-2 border-blue-200">Skor: <span id="score-display">0</span></div>
+            <button onclick="app.showScreen('teacher-login')" class="text-sm font-bold text-slate-400 hover:text-blue-600 transition">Guru</button>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center p-4 w-full max-w-5xl mx-auto">
+        
+        <div id="screen-home" class="screen active flex-col w-full max-w-lg gap-6">
+            <div class="text-center space-y-4">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Builder&backgroundColor=DBEAFE" alt="Robot" class="w-32 h-32 mx-auto rounded-full border-4 border-slate-300 bg-white shadow-lg mb-4">
+                <h1 class="text-4xl text-blue-600">PROJEK ROBOT PINTAR</h1>
+                <p class="text-slate-600 font-bold">Jadualkan diri anda sebagai Jurutera Robotik! Gunakan Pemikiran Komputasional untuk membina dan menghidupkan robot pertama anda.</p>
+            </div>
+            
+            <div class="game-card p-6 md:p-8 space-y-4 bg-white">
+                <h2 class="game-font text-xl text-slate-800 border-b-2 border-slate-200 pb-2">Pendaftaran Jurutera</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-500 mb-1">Nama Penuh Anda</label>
+                        <input type="text" id="reg-name" class="w-full bg-slate-50 border-2 border-slate-300 rounded-xl p-3 text-lg font-bold focus:border-blue-500 focus:outline-none transition" placeholder="Contoh: Amirul Hakim">
+                    </div>
+                </div>
+
+                <button id="btn-start" onclick="app.register()" class="game-btn w-full py-4 text-xl mt-6">MULA BINA ROBOT!</button>
+            </div>
+        </div>
+
+        <div id="screen-stage1" class="screen flex-col w-full gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-2xl border-4 border-slate-200 shadow-sm">
+                <div class="game-font text-blue-600 text-xl">TAHAP 1: DECOMPOSITION</div>
+                <div class="font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">Pecahkan Masalah</div>
+            </div>
+
+            <div class="game-card p-6 space-y-6">
+                <p class="font-bold text-lg text-slate-700">Untuk membina robot, kita perlu <span class="text-blue-600">pecahkan (decompose)</span> komponennya. Asingkan kotak komponen di bawah kepada "Sistem Mekanikal" dan "Sistem AI/Logik".</p>
+                <p class="text-sm text-slate-500 italic bg-blue-50 p-2 rounded-lg border border-blue-200">Arahan: Klik komponen untuk memasukkannya ke dalam kotak di bawah. Jika salah, anda boleh cuba ubah semula!</p>
+
+                <!-- Parts Tray -->
+                <div class="flex flex-wrap gap-3 justify-center p-4 bg-slate-50 rounded-xl border-2 border-slate-200 min-h-[80px]" id="s1-tray">
+                </div>
+
+                <!-- Drop Zones -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div class="drop-zone p-4 flex flex-col items-center gap-2" id="dz-mech">
+                        <h3 class="game-font text-slate-600 text-lg">⚙️ Sistem Mekanikal</h3>
+                        <div class="flex flex-wrap gap-2 w-full justify-center min-h-[50px] content-zone" data-type="mech"></div>
+                    </div>
+                    <div class="drop-zone p-4 flex flex-col items-center gap-2" id="dz-logic">
+                        <h3 class="game-font text-slate-600 text-lg">🧠 Sistem AI & Logik</h3>
+                        <div class="flex flex-wrap gap-2 w-full justify-center min-h-[50px] content-zone" data-type="logic"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="stage1.check()" id="btn-s1" class="game-btn btn-green px-8 py-3 text-lg">SEMAK PEMASANGAN</button>
+            </div>
+        </div>
+
+        <div id="screen-stage2" class="screen flex-col w-full gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-2xl border-4 border-slate-200 shadow-sm">
+                <div class="game-font text-emerald-600 text-xl">TAHAP 2: PATTERN RECOGNITION</div>
+                <div class="font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">Cari Corak Litar</div>
+            </div>
+
+            <div class="game-card p-6 space-y-6 text-center">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Builder&backgroundColor=D1FAE5" alt="Robot Body" class="w-24 h-24 mx-auto rounded-xl bg-white border-4 border-slate-200">
+                <p class="font-bold text-lg text-slate-700">Komponen fizikal siap! Kini kita perlu menyambung wayar kuasa. Kenal pasti <span class="text-emerald-600">corak (pattern)</span> untuk mencari palam wayar yang betul.</p>
+                
+                <div class="py-8 bg-slate-800 rounded-2xl border-4 border-slate-600 flex justify-center items-center gap-2 md:gap-4 overflow-x-auto">
+                    <div class="w-12 h-12 rounded-lg bg-red-500 border-2 border-red-300 flex items-center justify-center text-2xl">🔴</div>
+                    <div class="w-12 h-12 rounded-lg bg-blue-500 border-2 border-blue-300 flex items-center justify-center text-2xl">🔵</div>
+                    <div class="w-12 h-12 rounded-lg bg-yellow-400 border-2 border-yellow-200 flex items-center justify-center text-2xl">🟡</div>
+                    <div class="w-12 h-12 rounded-lg bg-red-500 border-2 border-red-300 flex items-center justify-center text-2xl">🔴</div>
+                    <div class="w-12 h-12 rounded-lg bg-blue-500 border-2 border-blue-300 flex items-center justify-center text-2xl">🔵</div>
+                    <div class="w-12 h-12 rounded-lg border-4 border-dashed border-slate-400 bg-slate-700 flex items-center justify-center text-2xl transition-all" id="s2-target">?</div>
+                </div>
+
+                <p class="text-sm text-slate-500 font-bold mt-4">Pilih palam seterusnya (Cuba lagi jika anda salah!):</p>
+                <div class="flex justify-center gap-4 mt-2">
+                    <button class="game-btn bg-red-500 !border-red-700 !shadow-[0_6px_0_#B91C1C] px-6 py-4 text-2xl" onclick="stage2.select('🔴')">🔴</button>
+                    <button class="game-btn bg-yellow-400 !border-yellow-600 !shadow-[0_6px_0_#CA8A04] px-6 py-4 text-2xl" onclick="stage2.select('🟡')">🟡</button>
+                    <button class="game-btn bg-blue-500 !border-blue-700 !shadow-[0_6px_0_#1D4ED8] px-6 py-4 text-2xl" onclick="stage2.select('🔵')">🔵</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-stage3" class="screen flex-col w-full gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-2xl border-4 border-slate-200 shadow-sm">
+                <div class="game-font text-amber-500 text-xl">TAHAP 3: ABSTRACTION</div>
+                <div class="font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">Fokus Perkara Penting</div>
+            </div>
+
+            <div class="game-card p-6 space-y-6">
+                <p class="font-bold text-lg text-slate-700">Robot sedia untuk dihidupkan. Proses <span class="text-amber-500">Abstraction</span> bermaksud kita fokus kepada maklumat penting dan abaikan data yang tidak relevan.</p>
+                
+                <p class="text-sm text-slate-500 font-bold bg-amber-50 p-3 rounded-lg border-2 border-amber-200">
+                    Arahan: Pilih 3 tetapan data yang PALING PENTING untuk sistem operasi robot.
+                </p>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="s3-data">
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="false" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">🎵</div>
+                        <div class="font-bold text-sm">Muzik Boot-Up</div>
+                    </div>
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="true" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">🔋</div>
+                        <div class="font-bold text-sm">Status Kapasiti Bateri</div>
+                    </div>
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="false" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">🎨</div>
+                        <div class="font-bold text-sm">Warna LED Kelipan</div>
+                    </div>
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="true" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">💾</div>
+                        <div class="font-bold text-sm">Fail Teras Sistem (OS)</div>
+                    </div>
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="false" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">🏷️</div>
+                        <div class="font-bold text-sm">Nama Kilang Pembuat</div>
+                    </div>
+                    <div class="game-card !border-2 p-4 text-center cursor-pointer data-node transition" data-essential="true" onclick="stage3.toggle(this)">
+                        <div class="text-3xl mb-2">🌡️</div>
+                        <div class="font-bold text-sm">Suhu Motor & Cip</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="stage3.check()" class="game-btn btn-green px-8 py-3 text-lg">BOOT SISTEM</button>
+            </div>
+        </div>
+
+        <div id="screen-stage4" class="screen flex-col w-full gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-2xl border-4 border-slate-200 shadow-sm">
+                <div class="game-font text-purple-500 text-xl">TAHAP 4: ALGORITHM</div>
+                <div class="font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">Susun Carta Alir</div>
+            </div>
+
+            <div class="game-card p-6 flex flex-col md:flex-row gap-8">
+                <div class="flex-1 w-full space-y-4">
+                    <p class="font-bold text-lg text-slate-700">Masa untuk menghidupkan robot! Susun algoritma ini dalam bentuk <span class="text-purple-500">Carta Alir (Flowchart)</span> yang betul.</p>
+                    <p class="text-sm text-slate-500 font-bold bg-purple-50 p-3 rounded-lg border-2 border-purple-200">
+                        Arahan: Klik blok di bawah untuk menyusunnya ke dalam slot carta alir.
+                    </p>
+
+                    <div class="bg-slate-100 border-2 border-slate-300 p-4 rounded-xl min-h-[150px] flex flex-wrap gap-2 justify-center content-start" id="s4-pool">
+                    </div>
+                </div>
+
+                <div class="w-full md:w-72 bg-slate-800 rounded-xl p-4 flex flex-col items-center shadow-inner flex-shrink-0" id="s4-flowchart">
+                </div>
+            </div>
+            
+            <div class="flex justify-end mt-2">
+                <button onclick="stage4.check()" class="game-btn btn-green px-8 py-3 text-lg">UJI CARTA ALIR</button>
+            </div>
+        </div>
+
+        <div id="screen-results" class="screen flex-col w-full max-w-2xl gap-6 mx-auto text-center">
+            <h1 class="text-5xl text-blue-600 mb-2">ROBOT BERJAYA BINA!</h1>
+            <p class="font-bold text-slate-600 text-lg">Tahniah, anda telah menguasai kemahiran Pemikiran Komputasional!</p>
+
+            <div class="game-card p-8 bg-white relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 opacity-10 text-9xl">🏆</div>
+                <div class="flex flex-col items-center">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Builder&backgroundColor=3B82F6" alt="Final Robot" class="w-40 h-40 rounded-full border-8 border-blue-100 shadow-xl mb-6">
+                    
+                    <div class="grid grid-cols-2 gap-4 w-full">
+                        <div class="bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
+                            <div class="text-sm font-bold text-slate-400 uppercase">Skor Kepakaran</div>
+                            <div class="text-4xl game-font text-blue-600 mt-1" id="res-score">0%</div>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
+                            <div class="text-sm font-bold text-slate-400 uppercase">Status Jurutera</div>
+                            <div class="text-2xl game-font text-emerald-500 mt-2" id="res-mastery">Pakar</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="save-status" class="text-sm font-bold text-amber-500 animate-pulse bg-amber-50 py-2 rounded-lg border-2 border-amber-200">
+                Menyimpan rekod sistem ke pangkalan data...
+            </div>
+            
+            <button onclick="location.reload()" class="game-btn py-4 text-xl w-full">BINA ROBOT BARU (KEMBALI)</button>
+        </div>
+
+        <div id="screen-teacher-login" class="screen flex-col max-w-sm w-full gap-6 mx-auto">
+            <div class="game-card p-6 space-y-4">
+                <h2 class="game-font text-xl text-blue-600 border-b-2 border-slate-200 pb-2">Akses Cikgu</h2>
+                <div>
+                    <input type="password" id="teach-pass" class="w-full bg-slate-50 border-2 border-slate-300 rounded-xl p-3 font-bold focus:border-blue-500 focus:outline-none" placeholder="Kata Laluan">
+                    <p class="text-xs font-bold text-slate-400 mt-2">KOD DEMO: TEACHER2026</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="app.showScreen('home')" class="game-btn bg-slate-400 !border-slate-500 !shadow-[0_4px_0_#64748B] flex-grow py-2 text-sm">Batal</button>
+                    <button onclick="dashboard.login()" class="game-btn btn-green flex-grow py-2 text-sm">Log Masuk</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-dashboard" class="screen flex-col w-full gap-6">
+            <div class="flex justify-between items-center bg-white p-4 rounded-2xl border-4 border-slate-200">
+                <div class="game-font text-blue-600 text-xl">DASHBOARD GURU</div>
+                <button onclick="app.showScreen('home')" class="game-btn bg-slate-400 px-4 py-2 text-sm">Keluar</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="game-card p-4 text-center">
+                    <div class="text-3xl game-font text-slate-700" id="dash-total">0</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Sesi Selesai</div>
+                </div>
+                <div class="game-card p-4 text-center">
+                    <div class="text-3xl game-font text-blue-600" id="dash-avg">0%</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Purata Skor Kelas</div>
+                </div>
+                <div class="game-card p-4 text-center">
+                    <div class="text-3xl game-font text-emerald-500" id="dash-mastery">0%</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Kelas Menguasai (&gt;60%)</div>
+                </div>
+            </div>
+
+            <div class="game-card p-4 bg-blue-50 border-2 border-blue-200">
+                <div class="text-xs font-bold text-blue-500 uppercase mb-1">Rumusan Keupayaan Topik</div>
+                <div class="text-sm font-bold text-slate-700" id="dash-insight">Sedang menganalisis data...</div>
+            </div>
+
+            <div class="game-card p-0 overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-100 border-b-2 border-slate-200">
+                        <tr>
+                            <th class="p-4 font-bold text-slate-500 text-sm">Nama Pelajar</th>
+                            <th class="p-4 font-bold text-slate-500 text-sm text-center">Jumlah Markah (/400)</th>
+                            <th class="p-4 font-bold text-slate-500 text-sm text-center">Peratus Individu (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-table" class="font-bold text-slate-700 text-sm">
+                        <tr><td colspan="3" class="p-4 text-center text-slate-400">Tiada rekod data dijumpai.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // PENTING: Letakkan URL Google Apps Script Web App di sini.
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3YYj8Ln9UVwtONgCiCXHHWv9jE3TP6LXGj61lDJ5e1ve3fTpM_JnxKvnrEoirbnIH/exec"; 
+
+        const state = {
+            name: "", studentId: null, sessionId: null,
+            scores: { m1: 100, m2: 100, m3: 100, m4: 100 }, 
+            totalScore: 0
+        };
+
+        const app = {
+            showScreen(id) {
+                document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+                document.getElementById('screen-' + id).classList.add('active');
+            },
+            toast(msg, icon="🔔") {
+                const el = document.getElementById('toast');
+                document.getElementById('toast-msg').innerText = msg;
+                document.getElementById('toast-icon').innerText = icon;
+                el.classList.add('show');
+                setTimeout(() => el.classList.remove('show'), 3000);
+            },
+            async register() {
+                const name = document.getElementById('reg-name').value.trim();
+                if(!name) return this.toast("Sila isikan nama anda!", "⚠️");
+                
+                if(!SCRIPT_URL || SCRIPT_URL.trim() === "") {
+                    return this.toast("Ralat Sistem: Pautan Pangkalan Data (Apps Script) belum dikonfigurasi!", "⛔");
+                }
+                
+                state.name = name; 
+                const btnStart = document.getElementById('btn-start');
+                btnStart.innerText = "MEMUAT NAIK...";
+                btnStart.disabled = true;
+
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        body: JSON.stringify({ action: "register", payload: { name, mode: 'game' } })
+                    });
+                    const data = await res.json();
+                    
+                    if(data.status === "success") {
+                        state.sessionId = data.sessionId; 
+                        state.studentId = data.studentId;
+                        
+                        document.getElementById('nav-score').classList.remove('hidden');
+                        this.updateScoreDisplay();
+                        stage1.init();
+                        app.showScreen('stage1');
+                        this.toast("Misi Membina Robot Bermula!", "🚀");
+                    } else {
+                        throw new Error("Pendaftaran ditolak oleh pelayan.");
+                    }
+                } catch(e) { 
+                    this.toast("Gagal menyambung ke pangkalan data. Sila semak pautan internet anda.", "❌");
+                    btnStart.innerText = "MULA BINA ROBOT!";
+                    btnStart.disabled = false;
+                }
+            },
+            deductScore(mod, amount) {
+                state.scores[mod] = Math.max(20, state.scores[mod] - amount); 
+                this.updateScoreDisplay();
+            },
+            updateScoreDisplay() {
+                state.totalScore = Object.values(state.scores).reduce((a,b)=>a+b, 0);
+                document.getElementById('score-display').innerText = state.totalScore;
+            },
+            async finishGame() {
+                app.showScreen('results');
+                const perc = Math.round((state.totalScore / 400) * 100);
+                document.getElementById('res-score').innerText = perc + "%";
+                document.getElementById('res-mastery').innerText = perc >= 80 ? "Pakar" : (perc >= 60 ? "Mahir" : "Sedang Belajar");
+                
+                const statusEl = document.getElementById('save-status');
+                if(SCRIPT_URL && state.sessionId) {
+                    try {
+                        await fetch(SCRIPT_URL, {
+                            method: "POST",
+                            body: JSON.stringify({ action: "submit_game", payload: { 
+                                sessionId: state.sessionId, studentId: state.studentId, scores: state.scores 
+                            }})
+                        });
+                        statusEl.innerText = "Data projek disimpan dengan jayanya!";
+                        statusEl.className = "text-sm font-bold text-emerald-600 bg-emerald-50 py-2 rounded-lg border-2 border-emerald-200";
+                    } catch(e) {
+                        statusEl.innerText = "Gagal simpan (Masalah Rangkaian).";
+                    }
+                }
+            }
+        };
+
+        const stage1 = {
+            items: [
+                { id: 1, name: "⚙️ Motor Roda", type: "mech" },
+                { id: 2, name: "🤖 Cip Pemproses AI", type: "logic" },
+                { id: 3, name: "🦾 Lengan Hidraulik", type: "mech" },
+                { id: 4, name: "📶 Modul Wifi", type: "logic" },
+                { id: 5, name: "📷 Kamera Sensor", type: "logic" },
+                { id: 6, name: "🔩 Rangka Besi", type: "mech" }
+            ],
+            init() {
+                const tray = document.getElementById('s1-tray');
+                tray.innerHTML = '';
+                this.items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'draggable-item bg-white border-4 border-slate-300 p-3 rounded-xl font-bold text-sm';
+                    el.innerText = item.name;
+                    el.dataset.type = item.type;
+                    el.dataset.id = item.id;
+                    el.onclick = () => this.handleItemClick(el);
+                    tray.appendChild(el);
+                });
+            },
+            handleItemClick(el) {
+                const parentId = el.parentElement.id;
+                if(parentId === 's1-tray') {
+                    el.classList.add('bg-blue-100', 'border-blue-400');
+                    app.toast("Pilih kotak di bawah untuk meletakkan komponen ini.", "👆");
+                    
+                    const zones = [document.getElementById('dz-mech'), document.getElementById('dz-logic')];
+                    const moveFn = (e) => {
+                        const targetZone = e.currentTarget.querySelector('.content-zone');
+                        el.classList.remove('bg-blue-100', 'border-blue-400');
+                        targetZone.appendChild(el);
+                        zones.forEach(z => z.removeEventListener('click', moveFn));
+                    };
+                    zones.forEach(z => z.addEventListener('click', moveFn));
+                } else {
+                    document.getElementById('s1-tray').appendChild(el);
+                }
+            },
+            check() {
+                const trayCount = document.getElementById('s1-tray').children.length;
+                if(trayCount > 0) return app.toast("Sila susun semua komponen dahulu!", "⚠️");
+
+                let correct = 0;
+                document.querySelectorAll('.content-zone .draggable-item').forEach(el => {
+                    const expectedType = el.dataset.type;
+                    const actualZone = el.parentElement.dataset.type;
+                    if(expectedType === actualZone) {
+                        correct++;
+                        el.classList.replace('border-slate-300', 'border-emerald-500');
+                    } else {
+                        el.classList.replace('border-slate-300', 'border-red-500');
+                        setTimeout(() => {
+                            el.classList.replace('border-red-500', 'border-slate-300');
+                            document.getElementById('s1-tray').appendChild(el);
+                        }, 1500);
+                    }
+                });
+
+                if(correct === 6) {
+                    app.toast("Decomposition Sempurna! Robot distrukturkan.", "✅");
+                    setTimeout(() => app.showScreen('stage2'), 1500);
+                } else {
+                    app.deductScore('m1', 20);
+                    app.toast(`Ada ${6 - correct} komponen di kotak yang salah. Cuba betulkan!`, "❌");
+                }
+            }
+        };
+
+        const stage2 = {
+            select(symbol) {
+                const target = document.getElementById('s2-target');
+                target.innerText = symbol;
+                
+                if(symbol === '🟡') {
+                    target.className = "w-12 h-12 rounded-lg flex items-center justify-center text-2xl bg-yellow-400 border-2 border-yellow-200 shadow-[0_0_15px_#FACC15]";
+                    app.toast("Corak Dikenalpasti! Kuasa mengalir.", "✅");
+                    setTimeout(() => app.showScreen('stage3'), 1500);
+                } else {
+                    target.className = "w-12 h-12 rounded-lg flex items-center justify-center text-2xl bg-red-500 border-2 border-red-700 shadow-[0_0_15px_#B91C1C] animate-pulse";
+                    app.deductScore('m2', 20);
+                    app.toast("Palam salah! Fahami corak: Merah, Biru, Kuning...", "⚡");
+                    setTimeout(() => {
+                        target.innerText = '?';
+                        target.className = "w-12 h-12 rounded-lg border-4 border-dashed border-slate-400 bg-slate-700 flex items-center justify-center text-2xl transition-all";
+                    }, 1500);
+                }
+            }
+        };
+
+        const stage3 = {
+            selectedCount: 0,
+            toggle(el) {
+                if(el.classList.contains('!border-amber-500')) {
+                    el.classList.remove('!border-amber-500', 'bg-amber-100');
+                    this.selectedCount--;
+                } else {
+                    if(this.selectedCount >= 3) return app.toast("Hanya pilih 3 yang terpenting!", "⚠️");
+                    el.classList.add('!border-amber-500', 'bg-amber-100');
+                    this.selectedCount++;
+                }
+            },
+            check() {
+                if(this.selectedCount !== 3) return app.toast("Pilih tepat 3 tetapan sistem!", "⚠️");
+                
+                let correct = 0;
+                document.querySelectorAll('.data-node').forEach(el => {
+                    const isSelected = el.classList.contains('!border-amber-500');
+                    const isEssential = el.dataset.essential === "true";
+                    if(isSelected && isEssential) correct++;
+                });
+
+                if(correct === 3) {
+                    app.toast("Abstraction Berjaya! Sistem operasi sedang Boot.", "✅");
+                    setTimeout(() => { stage4.init(); app.showScreen('stage4'); }, 2000);
+                } else {
+                    app.deductScore('m3', 20);
+                    app.toast("Abstraction kurang tepat. Ingat, robot perlukan data untuk FUNGSI asasi.", "❌");
+                    document.querySelectorAll('.data-node').forEach(el => {
+                        if(el.classList.contains('!border-amber-500') && el.dataset.essential === "false") {
+                            el.classList.add('bg-red-200');
+                            setTimeout(() => el.classList.remove('bg-red-200', '!border-amber-500', 'bg-amber-100'), 1500);
+                        }
+                    });
+                    this.selectedCount = 0;
+                }
+            }
+        };
+
+        const stage4 = {
+            items: [
+                { id: 1, text: "🟢 MULA", type: "pill", color: "bg-emerald-500 border-emerald-700" },
+                { id: 2, text: "🔋 BEKALKAN KUASA", type: "rect", color: "bg-blue-500 border-blue-700" },
+                { id: 3, text: "💠 CIP MENYALA?", type: "rhombus", color: "bg-purple-500 border-purple-700" },
+                { id: 4, text: "🤖 AKTIF MOD BERJALAN", type: "rect", color: "bg-blue-500 border-blue-700" },
+                { id: 5, text: "🛑 TAMAT", type: "pill", color: "bg-red-500 border-red-700" }
+            ],
+            slots: [null, null, null, null, null], 
+            
+            init() {
+                let shuffled = [...this.items].sort(() => Math.random() - 0.5);
+                const pool = document.getElementById('s4-pool');
+                pool.innerHTML = '';
+                
+                shuffled.forEach(item => {
+                    const el = this.createBlockElement(item);
+                    el.onclick = () => this.moveToFlowchart(item, el);
+                    pool.appendChild(el);
+                });
+
+                this.renderFlowchartSlots();
+            },
+            
+            createBlockElement(item) {
+                const el = document.createElement('div');
+                let shapeClass = item.type === 'pill' ? 'rounded-full px-6 py-2' : 'rounded-lg px-4 py-2';
+                el.className = `cursor-pointer text-white font-bold text-sm border-b-4 hover:translate-y-1 hover:border-b-0 transition-all ${shapeClass} ${item.color}`;
+                el.innerText = item.text;
+                el.dataset.id = item.id;
+                return el;
+            },
+            
+            renderFlowchartSlots() {
+                const board = document.getElementById('s4-flowchart');
+                board.innerHTML = '';
+                
+                for(let i=0; i<5; i++) {
+                    const slotCont = document.createElement('div');
+                    slotCont.className = 'flex flex-col items-center w-full';
+                    
+                    const slotBox = document.createElement('div');
+                    slotBox.className = 'w-[90%] h-[44px] border-2 border-dashed border-slate-500 rounded-lg bg-slate-700 flex items-center justify-center transition-all';
+                    
+                    if(this.slots[i] !== null) {
+                        slotBox.classList.remove('border-dashed', 'border-slate-500', 'bg-slate-700');
+                        const block = this.createBlockElement(this.slots[i]);
+                        block.className = block.className.replace('hover:translate-y-1', ''); 
+                        block.onclick = () => this.moveToPool(i);
+                        slotBox.appendChild(block);
+                    }
+                    
+                    slotCont.appendChild(slotBox);
+                    
+                    if(i < 4) {
+                        const arrow = document.createElement('div');
+                        arrow.className = 'text-slate-500 my-1 text-xl';
+                        arrow.innerText = '↓';
+                        slotCont.appendChild(arrow);
+                    }
+                    board.appendChild(slotCont);
+                }
+            },
+            
+            moveToFlowchart(item, htmlElement) {
+                const emptyIndex = this.slots.findIndex(s => s === null);
+                if(emptyIndex === -1) return app.toast("Carta Alir telah penuh!", "⚠️");
+                
+                this.slots[emptyIndex] = item;
+                htmlElement.remove();
+                this.renderFlowchartSlots();
+            },
+            
+            moveToPool(slotIndex) {
+                const item = this.slots[slotIndex];
+                this.slots[slotIndex] = null;
+                
+                const pool = document.getElementById('s4-pool');
+                const el = this.createBlockElement(item);
+                el.onclick = () => this.moveToFlowchart(item, el);
+                pool.appendChild(el);
+                
+                this.renderFlowchartSlots();
+            },
+            
+            check() {
+                if(this.slots.some(s => s === null)) {
+                    return app.toast("Sila lengkapkan semua blok dalam carta alir!", "⚠️");
+                }
+                
+                let correctCount = 0;
+                let wrongIndexes = [];
+                
+                for(let i=0; i<5; i++) {
+                    if(this.slots[i].id === i + 1) {
+                        correctCount++;
+                    } else {
+                        wrongIndexes.push(i);
+                    }
+                }
+                
+                if(correctCount === 5) {
+                    app.toast("Algoritma Berjaya! Carta Alir berfungsi.", "🏆");
+                    setTimeout(() => app.finishGame(), 2000);
+                } else {
+                    app.deductScore('m4', 20);
+                    app.toast("Susunan salah. Robot mengalami ralat!", "💥");
+                    
+                    const board = document.getElementById('s4-flowchart');
+                    wrongIndexes.forEach(idx => {
+                        const slotDiv = board.children[idx].children[0];
+                        slotDiv.classList.add('bg-red-500'); 
+                        setTimeout(() => this.moveToPool(idx), 1000);
+                    });
+                }
+            }
+        };
+
+        const dashboard = {
+            async login() {
+                if(document.getElementById('teach-pass').value === 'TEACHER2026') {
+                    app.showScreen('dashboard');
+                    document.getElementById('dash-insight').innerText = "Sedang mengambil data dari pangkalan data...";
+                    await this.fetchData();
+                } else {
+                    app.toast("Kata Laluan Salah", "🔒");
+                }
+            },
+            async fetchData() {
+                if(!SCRIPT_URL) {
+                    document.getElementById('dash-insight').innerText = "Mod Demo (Tiada URL pautan dikesan).";
+                    return;
+                }
+                
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        body: JSON.stringify({ action: "get_dashboard_data" })
+                    });
+                    const result = await res.json();
+                    
+                    if(result.status === "success") {
+                        this.renderData(result.data);
+                    } else {
+                        throw new Error("Gagal ambil data");
+                    }
+                } catch (e) {
+                    document.getElementById('dash-insight').innerText = "Gagal memuat turun data secara langsung.";
+                    app.toast("Ralat rangkaian", "❌");
+                }
+            },
+            renderData(d) {
+                document.getElementById('dash-total').innerText = d.totalCompleted;
+                document.getElementById('dash-avg').innerText = d.avgPercentage + '%';
+                document.getElementById('dash-mastery').innerText = d.masteryPercentage + '%';
+                document.getElementById('dash-insight').innerText = `Keupayaan keseluruhan kelas memahami topik: ${d.masteryPercentage}% pelajar berjaya melepasi tahap penguasaan (>60%) dalam semua misi membina robot.`;
+                
+                const tbody = document.getElementById('dash-table');
+                tbody.innerHTML = '';
+                
+                if(d.studentsList.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 font-bold">Belum ada rekod pelajar menyiapkan misi ini.</td></tr>`;
+                    return;
+                }
+
+                d.studentsList.forEach(s => {
+                    let color = "text-amber-500";
+                    if(s.percentage >= 80) color = "text-emerald-600";
+                    else if (s.percentage >= 60) color = "text-blue-500";
+                    
+                    tbody.innerHTML += `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                            <td class="p-4 font-bold text-slate-800">${s.name}</td>
+                            <td class="p-4 text-center font-black ${color}">${s.totalScore}</td>
+                            <td class="p-4 text-center font-bold ${color}">${s.percentage}%</td>
+                        </tr>
+                    `;
+                });
+            }
+        };
+
+    </script>
+</body>
+</html>

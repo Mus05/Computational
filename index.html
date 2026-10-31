@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -105,7 +105,10 @@
                     </div>
                 </div>
 
-                <button id="btn-start" onclick="app.register()" class="game-btn w-full py-4 text-xl mt-6">MULA BINA ROBOT!</button>
+                <label class="block font-bold">ID Pelajar (diberi guru; guna ID sama setiap kali)</label>
+<input id="reg-code" class="w-full border-2 rounded-xl p-3" placeholder="Contoh: SK01-001" maxlength="40">
+<label class="block font-bold">Kelas</label><input id="reg-class" class="w-full border-2 rounded-xl p-3" placeholder="Contoh: 5 Bestari" maxlength="80">
+<button id="btn-start" onclick="app.register()" class="game-btn w-full py-4 text-xl mt-6">MULA BINA ROBOT!</button>
             </div>
         </div>
 
@@ -267,6 +270,7 @@
                 Menyimpan rekod sistem ke pangkalan data...
             </div>
             
+            <button id="retry-save" hidden class="game-btn p-3" onclick="app.finishGame()">CUBA SIMPAN SEMULA</button>
             <button onclick="location.reload()" class="game-btn py-4 text-xl w-full">BINA ROBOT BARU (KEMBALI)</button>
         </div>
 
@@ -293,7 +297,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="game-card p-4 text-center">
                     <div class="text-3xl game-font text-slate-700" id="dash-total">0</div>
-                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Sesi Selesai</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Pelajar Selesai (ID Unik)</div>
                 </div>
                 <div class="game-card p-4 text-center">
                     <div class="text-3xl game-font text-blue-600" id="dash-avg">0%</div>
@@ -301,7 +305,7 @@
                 </div>
                 <div class="game-card p-4 text-center">
                     <div class="text-3xl game-font text-emerald-500" id="dash-mastery">0%</div>
-                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Kelas Menguasai (&gt;60%)</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase mt-1">Menguasai Semua Tahap (≥60 setiap tahap)</div>
                 </div>
             </div>
 
@@ -310,7 +314,7 @@
                 <div class="text-sm font-bold text-slate-700" id="dash-insight">Sedang menganalisis data...</div>
             </div>
 
-            <div class="game-card p-0 overflow-hidden">
+            <div id="dash-modules" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div><div class="game-card p-0 overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-slate-100 border-b-2 border-slate-200">
                         <tr>
@@ -358,6 +362,9 @@
                     return this.toast("Ralat Sistem: Pautan Pangkalan Data (Apps Script) belum dikonfigurasi!", "⛔");
                 }
                 
+                const studentCode = document.getElementById('reg-code').value.trim().toUpperCase();
+                const className = document.getElementById('reg-class').value.trim();
+                if (!studentCode || !className) return this.toast('Isi ID pelajar dan kelas.', '⚠️');
                 state.name = name; 
                 const btnStart = document.getElementById('btn-start');
                 btnStart.innerText = "MEMUAT NAIK...";
@@ -366,11 +373,15 @@
                 try {
                     const res = await fetch(SCRIPT_URL, {
                         method: "POST",
-                        body: JSON.stringify({ action: "register", payload: { name, mode: 'game' } })
+                        body: JSON.stringify({ action: "register", payload: { name, studentCode, className, mode: 'game' } })
                     });
                     const data = await res.json();
                     
                     if(data.status === "success") {
+                        state.scores = {m1:100,m2:100,m3:100,m4:100};
+                        document.querySelectorAll('.content-zone').forEach(el=>el.replaceChildren());
+                        document.querySelectorAll('.data-node').forEach(el=>el.classList.remove('!border-amber-500','bg-amber-100','bg-red-200'));
+                        stage3.selectedCount=0;
                         state.sessionId = data.sessionId; 
                         state.studentId = data.studentId;
                         
@@ -380,10 +391,10 @@
                         app.showScreen('stage1');
                         this.toast("Misi Membina Robot Bermula!", "🚀");
                     } else {
-                        throw new Error("Pendaftaran ditolak oleh pelayan.");
+                        throw new Error(data.message || "Pendaftaran ditolak oleh pelayan.");
                     }
                 } catch(e) { 
-                    this.toast("Gagal menyambung ke pangkalan data. Sila semak pautan internet anda.", "❌");
+                    this.toast(e.message || "Gagal menyambung ke pangkalan data.", "❌");
                     btnStart.innerText = "MULA BINA ROBOT!";
                     btnStart.disabled = false;
                 }
@@ -405,16 +416,21 @@
                 const statusEl = document.getElementById('save-status');
                 if(SCRIPT_URL && state.sessionId) {
                     try {
-                        await fetch(SCRIPT_URL, {
+                        const saveResponse = await fetch(SCRIPT_URL, {
                             method: "POST",
                             body: JSON.stringify({ action: "submit_game", payload: { 
                                 sessionId: state.sessionId, studentId: state.studentId, scores: state.scores 
                             }})
                         });
+                        const saved = await saveResponse.json();
+                        if (!saveResponse.ok || saved.status !== 'success') throw new Error(saved.message || 'Simpanan ditolak.');
+                        document.getElementById('retry-save').hidden = true;
                         statusEl.innerText = "Data projek disimpan dengan jayanya!";
                         statusEl.className = "text-sm font-bold text-emerald-600 bg-emerald-50 py-2 rounded-lg border-2 border-emerald-200";
                     } catch(e) {
-                        statusEl.innerText = "Gagal simpan (Masalah Rangkaian).";
+                        statusEl.innerText = 'Belum disimpan: ' + e.message;
+                        statusEl.classList.remove('animate-pulse');
+                        document.getElementById('retry-save').hidden = false;
                     }
                 }
             }
@@ -442,23 +458,25 @@
                     tray.appendChild(el);
                 });
             },
+            selected: null,
             handleItemClick(el) {
-                const parentId = el.parentElement.id;
-                if(parentId === 's1-tray') {
-                    el.classList.add('bg-blue-100', 'border-blue-400');
-                    app.toast("Pilih kotak di bawah untuk meletakkan komponen ini.", "👆");
-                    
-                    const zones = [document.getElementById('dz-mech'), document.getElementById('dz-logic')];
-                    const moveFn = (e) => {
-                        const targetZone = e.currentTarget.querySelector('.content-zone');
-                        el.classList.remove('bg-blue-100', 'border-blue-400');
-                        targetZone.appendChild(el);
-                        zones.forEach(z => z.removeEventListener('click', moveFn));
-                    };
-                    zones.forEach(z => z.addEventListener('click', moveFn));
-                } else {
-                    document.getElementById('s1-tray').appendChild(el);
+                if (this.busy) return;
+                if (this.selected) this.selected.classList.remove('bg-blue-100','border-blue-400');
+                this.selected = null;
+                if (el.parentElement.id !== 's1-tray') {
+                    document.getElementById('s1-tray').appendChild(el); return;
                 }
+                this.selected = el;
+                el.classList.add('bg-blue-100','border-blue-400');
+                ['dz-mech','dz-logic'].forEach(id => {
+                    document.getElementById(id).onclick = e => {
+                        if (!this.selected || this.busy) return;
+                        const item = this.selected; this.selected = null;
+                        item.classList.remove('bg-blue-100','border-blue-400');
+                        e.currentTarget.querySelector('.content-zone').appendChild(item);
+                    };
+                });
+                app.toast('Pilih kotak komponen.', '👆');
             },
             check() {
                 const trayCount = document.getElementById('s1-tray').children.length;
@@ -545,7 +563,7 @@
                             setTimeout(() => el.classList.remove('bg-red-200', '!border-amber-500', 'bg-amber-100'), 1500);
                         }
                     });
-                    this.selectedCount = 0;
+                    this.selectedCount = correct;
                 }
             }
         };
@@ -561,6 +579,7 @@
             slots: [null, null, null, null, null], 
             
             init() {
+                this.slots = [null,null,null,null,null];
                 let shuffled = [...this.items].sort(() => Math.random() - 0.5);
                 const pool = document.getElementById('s4-pool');
                 pool.innerHTML = '';
@@ -679,6 +698,9 @@
                 }
             },
             async fetchData() {
+                ['dash-total','dash-avg','dash-mastery'].forEach(id=>document.getElementById(id).textContent='—');
+                document.getElementById('dash-table').replaceChildren();
+                document.getElementById('dash-modules').replaceChildren();
                 if(!SCRIPT_URL) {
                     document.getElementById('dash-insight').innerText = "Mod Demo (Tiada URL pautan dikesan).";
                     return;
@@ -702,35 +724,75 @@
                 }
             },
             renderData(d) {
-                document.getElementById('dash-total').innerText = d.totalCompleted;
-                document.getElementById('dash-avg').innerText = d.avgPercentage + '%';
-                document.getElementById('dash-mastery').innerText = d.masteryPercentage + '%';
-                document.getElementById('dash-insight').innerText = `Keupayaan keseluruhan kelas memahami topik: ${d.masteryPercentage}% pelajar berjaya melepasi tahap penguasaan (>60%) dalam semua misi membina robot.`;
-                
-                const tbody = document.getElementById('dash-table');
-                tbody.innerHTML = '';
-                
-                if(d.studentsList.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 font-bold">Belum ada rekod pelajar menyiapkan misi ini.</td></tr>`;
-                    return;
+                const pct = n => n == null ? '—' : n + '%';
+                document.getElementById('dash-total').textContent = d.totalCompleted;
+                document.getElementById('dash-avg').textContent = pct(d.avgPercentage);
+                document.getElementById('dash-mastery').textContent = pct(d.masteryPercentage);
+                document.getElementById('dash-insight').textContent =
+                    'Asas penilaian: percubaan lengkap terkini bagi setiap ID pelajar. ' +
+                    d.totalCompleted + ' daripada ' + d.totalRegistered + ' ID mempunyai keputusan lengkap; ' + d.withoutCompleted + ' belum ada keputusan lengkap. ' +
+                    d.completedSessions + ' sesi lengkap sah; ' + d.incompleteSessions + ' sesi belum selesai. ' +
+                    'Penguasaan skor keseluruhan (≥60%): ' + pct(d.overallMasteryPercentage) + '. ' +
+                    'Penguasaan semua tahap (setiap tahap ≥60): ' + pct(d.masteryPercentage) + '. ' +
+                    d.invalidRecords + ' rekod lengkap tidak sah dikecualikan. ' +
+                    (d.legacyStudents ? 'PERHATIAN: ' + d.legacyStudents + ' ID lama tiada kod pelajar; bilangan orang sebenar mungkin berganda. Semak pemetaan ID lama sebelum penilaian rasmi. ' : '') +
+                    'Skor ialah prestasi permainan dengan bantuan/cuba semula; bukan ukuran penguasaan bebas.';
+                const modules = document.getElementById('dash-modules'); modules.replaceChildren();
+                d.modules.forEach(m => {
+                    const el = document.createElement('div'); el.className = 'game-card p-4';
+                    el.textContent = m.name + ': purata ' + pct(m.average) + ' | mencapai ≥60: ' + pct(m.masteryPercentage);
+                    modules.appendChild(el);
+                });
+                const tbody = document.getElementById('dash-table'); tbody.replaceChildren();
+                const header = tbody.parentElement.querySelector('thead tr'); header.replaceChildren();
+                ['Pelajar / ID / Kelas','Selesai (waktu tempatan)','Percubaan lengkap','M1 /100','M2 /100','M3 /100','M4 /100','Jumlah /400','Peratus','Kategori keseluruhan','Tahap perlu bimbingan'].forEach(t => {
+                    const th=document.createElement('th'); th.className='p-3'; th.textContent=t; header.appendChild(th);
+                });
+                if (!d.studentsList.length) {
+                    const tr=document.createElement('tr'), td=document.createElement('td'); td.colSpan=11;
+                    td.textContent='Belum ada keputusan lengkap yang sah.'; tr.appendChild(td); tbody.appendChild(tr);
                 }
-
                 d.studentsList.forEach(s => {
-                    let color = "text-amber-500";
-                    if(s.percentage >= 80) color = "text-emerald-600";
-                    else if (s.percentage >= 60) color = "text-blue-500";
-                    
-                    tbody.innerHTML += `
-                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
-                            <td class="p-4 font-bold text-slate-800">${s.name}</td>
-                            <td class="p-4 text-center font-black ${color}">${s.totalScore}</td>
-                            <td class="p-4 text-center font-bold ${color}">${s.percentage}%</td>
-                        </tr>
-                    `;
+                    const tr=document.createElement('tr'); tr.className='border-b';
+                    const weak=s.scores.map((v,i)=>v<60 ? d.modules[i].name : '').filter(Boolean);
+                    [s.name+' / '+(s.studentCode||s.studentId+' (ID lama)')+' / '+s.className,
+                    new Date(s.completedAt).toLocaleString('ms-MY'),s.attempts,...s.scores,s.totalScore,pct(s.percentage),s.mastery,weak.join(', ')||'Tiada'].forEach(v=>{
+                        const td=document.createElement('td'); td.className='p-3'; td.textContent=v; tr.appendChild(td);
+                    }); tbody.appendChild(tr);
                 });
             }
         };
 
+        function guardStage(obj, method, duration) {
+            const fn = obj[method];
+            obj[method] = function(...args) {
+                if (obj.busy) return;
+                obj.busy = true;
+                try { return fn.apply(obj,args); }
+                finally { setTimeout(()=>{obj.busy=false;},duration); }
+            };
+        }
+        guardStage(stage1,'check',1700);
+        guardStage(stage2,'select',1700);
+        guardStage(stage3,'check',2200);
+        guardStage(stage4,'check',2200);
+        const originalToggle = stage3.toggle;
+        stage3.toggle = function(el) { if (!this.busy) originalToggle.call(this,el); };
+        const originalMove = stage4.moveToFlowchart;
+        stage4.moveToFlowchart = function(...args) { if (!this.busy) originalMove.apply(this,args); };
+        const originalRender = stage4.renderFlowchartSlots;
+        stage4.renderFlowchartSlots = function() {
+            originalRender.call(this);
+            document.querySelectorAll('#s4-flowchart [data-id]').forEach(el => {
+                const handler=el.onclick; el.onclick=()=>{if(!this.busy) handler();};
+            });
+        };
+        const originalFinish = app.finishGame;
+        app.finishGame = async function() {
+            if (this.saving) return;
+            this.saving=true;
+            try { await originalFinish.call(this); } finally { this.saving=false; }
+        };
     </script>
 </body>
 </html>
